@@ -1,16 +1,7 @@
 # order_online
 
-A new Flutter project.
+This is the customer facing web app for online ordering. Currently a work in progress.
 
-## Getting Started
+The point of this web app is to easily integrate online ordering for any restaurant with minimal setup involved. It will allow customers to add items from the menu (dynamically loaded based on restaurant & location) into their cart, and pay for said items via Stripe. When customers order, the app will remember their details for next time if they make an account. We will also facilitate the ability to send texts through the app from the kitchen to the customer on the status of their order.
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The second part of this business will be a business facing mobile application that allows the business to update settings, their menu, and more.
