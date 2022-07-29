@@ -7,6 +7,7 @@ import 'package:order_online/models/variation.dart';
 import 'package:order_online/providers/order_details.dart';
 import 'package:order_online/screens/cart_screen/cart_screen.dart';
 import 'package:order_online/screens/sign_in_screen/sign_in_screen.dart';
+import '../../models/docRefPath.dart';
 import '../../providers/cart.dart';
 import 'menu_group.dart';
 import 'location_box.dart';
@@ -18,7 +19,11 @@ import 'top_nav_bar.dart';
 
 class MenuScreen extends StatefulWidget {
   final Map<String, dynamic> restaurantInfo;
-  MenuScreen({required this.restaurantInfo});
+  final String? orderDocRefEnc;
+  MenuScreen({
+    required this.restaurantInfo,
+    this.orderDocRefEnc,
+  });
 
   @override
   State<MenuScreen> createState() => _MenuScreenState();
@@ -37,6 +42,7 @@ class _MenuScreenState extends State<MenuScreen> {
   List<String> categories = [];
   Map categoriesMap = {};
   final _auth = FirebaseAuth.instance;
+  DocumentReference? orderDocRef;
 
   bool aboveMaxSides = false;
 
@@ -44,6 +50,110 @@ class _MenuScreenState extends State<MenuScreen> {
   List<FoodItem> allFoodItems = [];
 
   OrderItem? selectedOrderItem;
+
+  Future<void> _getOrderDoc(bool isPreviousOrder) async {
+    if (isPreviousOrder) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_auth.currentUser!.uid)
+          .get();
+      final userData = userDoc.data();
+      List allUserOrders = userData!['allOrders'];
+      orderDocRef = allUserOrders.reversed.firstWhereOrNull((order) {
+        order as DocumentReference;
+        var path = order.path;
+        DocumentReference thisRestaurantRef = widget.restaurantInfo['docRef'];
+        return getDocRefFromPath(path).documentIds[0] == thisRestaurantRef.id;
+      });
+    } else {
+      DocRefPath path =
+          getDocRefFromPath(decryptString(widget.orderDocRefEnc!));
+      orderDocRef = FirebaseFirestore.instance
+          .collection('restaurants')
+          .doc(path.documentIds[0])
+          .collection('locations')
+          .doc(path.documentIds[1])
+          .collection('orders')
+          .doc(path.documentIds[2]);
+    }
+  }
+
+  Future<void> _getSelectedLocationFromOrder(bool isPreviousOrder) async {
+    if (isPreviousOrder) {
+      final orderLocationId =
+          getDocRefFromPath(orderDocRef!.path).documentIds[1];
+      final orderLocation = locationsQDS.firstWhereOrNull((location) {
+        return location.id == orderLocationId;
+      });
+      if (orderLocation != null) {
+        final orderLocationData = orderLocation.data();
+        final locationName =
+            deleteNumbersFromString(orderLocationData['address']);
+        selectLocationGetData(locationName);
+      }
+    } else {
+      DocRefPath path =
+          getDocRefFromPath(decryptString(widget.orderDocRefEnc!));
+
+      DocumentSnapshot<Map<String, dynamic>> locationDoc =
+          await FirebaseFirestore.instance
+              .collection('restaurants')
+              .doc(path.documentIds[0])
+              .collection('locations')
+              .doc(path.documentIds[1])
+              .get();
+
+      final locationData = locationDoc.data();
+      selectLocationGetData(deleteNumbersFromString(locationData!['address']));
+    }
+  }
+
+  Future<void> _populateCartWithOrder() async {
+    if (orderDocRef != null) {
+      final orderDoc = await orderDocRef!.get();
+      Map<String, dynamic> orderData = orderDoc.data() as Map<String, dynamic>;
+      List orderCart = orderData['orderItems'];
+      final cartProv = Provider.of<Cart>(context, listen: false);
+      for (var item in orderCart) {
+        List selectedSidesMap = item['selectedSides'];
+        List<OrderItem> selectedSides = [];
+        for (var side in selectedSidesMap) {
+          selectedSides.add(
+            OrderItem(
+              id: UniqueKey().toString(),
+              activePrice: side['activePrice'],
+              name: side['name'],
+              maxSides: 0,
+              selectedVariations: [],
+              selectedSides: [],
+              notes: null,
+            ),
+          );
+        }
+        List selectedVariationsMap = item['selectedVariations'];
+        List<Variation> selectedVariations = [];
+        for (var variation in selectedVariationsMap) {
+          selectedVariations.add(
+            Variation(
+              description: variation['description'],
+              price: variation['price'],
+            ),
+          );
+        }
+        cartProv.addOrderItem(
+          OrderItem(
+            id: UniqueKey().toString(),
+            activePrice: item['activePrice'],
+            name: item['name'],
+            maxSides: item['maxSides'],
+            selectedVariations: selectedVariations,
+            selectedSides: selectedSides,
+            notes: item['notes'],
+          ),
+        );
+      }
+    }
+  }
 
   void selectOrderItem(FoodItem? item) {
     if (item != null) {
@@ -149,7 +259,7 @@ class _MenuScreenState extends State<MenuScreen> {
     });
   }
 
-  void selectLocationGetData(String location) async {
+  void selectLocationGetData(String location) {
     Provider.of<Cart>(context, listen: false).clearEntireCart();
     final orderDetailsProv = Provider.of<OrderDetails>(context, listen: false);
     orderDetailsProv.location = location;
@@ -248,6 +358,25 @@ class _MenuScreenState extends State<MenuScreen> {
       _isLoadingMainScreen = true;
     });
     getLocationData();
+    if (widget.orderDocRefEnc != null &&
+        Provider.of<Cart>(context, listen: false).orderItems.isEmpty) {
+      _setupOrder(false);
+    }
+  }
+
+  void _setupOrder(bool isPreviousOrder) async {
+    await _getOrderDoc(isPreviousOrder);
+    await _getSelectedLocationFromOrder(isPreviousOrder);
+    await _populateCartWithOrder();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Order Added To Cart',
+          textAlign: TextAlign.center,
+        ),
+        backgroundColor: themeColor,
+      ),
+    );
   }
 
   Future<void> getLocationData() async {
@@ -319,19 +448,46 @@ class _MenuScreenState extends State<MenuScreen> {
                     signout: _signOut,
                   ),
                   SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_auth.currentUser != null) {
+                        _setupOrder(true);
+                      } else {
+                        Navigator.of(context).pushNamed('signin');
+                      }
+                    },
+                    style: ButtonStyle(
+                      backgroundColor: MaterialStateProperty.all(themeColor),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4),
+                          child: Icon(Icons.add_shopping_cart),
+                        ),
+                        SizedBox(width: 5),
+                        Text('Auto-Fill With Previous Order'),
+                      ],
+                    ),
+                  ),
+                  if (locations.length > 1) const SizedBox(height: 10),
                   if (locations.length > 1)
-                    Text(
+                    const Text(
                       'CHOOSE LOCATION',
                       style: TextStyle(fontSize: 20),
                     ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   if (locations.length > 1)
                     ElevatedButton(
                       onPressed: () {},
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.add_location_rounded),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Icon(Icons.add_location_rounded),
+                          ),
                           SizedBox(width: 5),
                           Text('Find Closest Location'),
                         ],

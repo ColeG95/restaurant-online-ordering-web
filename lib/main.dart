@@ -13,8 +13,11 @@ import 'package:order_online/screens/sign_in_screen/sign_in_screen.dart';
 import 'screens/menu_screen/menu_screen.dart';
 import 'firebase_options.dart';
 import 'package:provider/provider.dart';
+import 'models/docRefPath.dart';
 
 // TODO change firebase security rules
+// TODO add parameters to cancelUrl to MenuScreen to grab order and repopulate cart
+// TODO add a way to favorite orders, and pick that order to get again
 
 void main() async {
   // setPathUrlStrategy();
@@ -30,6 +33,7 @@ void main() async {
     restaurantsInfo.add({
       'name': doc.data()['name'].toString().toLowerCase(),
       'docRef': doc.reference,
+      'logoUrl': doc.data()['logoUrl'],
     });
   }
   runApp(MyApp(restaurantsInfo));
@@ -41,11 +45,12 @@ class MyApp extends StatelessWidget {
 
   Map<String, Widget Function(BuildContext)> _getRoutes() {
     Map<String, Widget Function(BuildContext)> routeMap = {};
-    for (var restaurant in restaurantsInfo) {
-      String name = restaurant['name'];
-      DocumentReference docRef = restaurant['docRef'];
-      routeMap['/${name}/menu'] = (_) => MenuScreen(restaurantInfo: restaurant);
-      routeMap['/${name}/cart'] = (_) => CartScreen(restaurantInfo: restaurant);
+    for (var restaurantInfo in restaurantsInfo) {
+      String name = restaurantInfo['name'];
+      routeMap['/${name}/menu'] =
+          (_) => MenuScreen(restaurantInfo: restaurantInfo);
+      routeMap['/${name}/cart'] =
+          (_) => CartScreen(restaurantInfo: restaurantInfo);
     }
     routeMap['/signin'] = (_) => SignInScreen();
     return routeMap;
@@ -68,16 +73,40 @@ class MyApp extends StatelessWidget {
         onGenerateRoute: (settings) {
           var startParamIndex = settings.name?.indexOf('=');
           var fragmentEndIndex = settings.name?.indexOf('?');
+          var name = settings.name;
+          var queryParameter =
+              name == null || startParamIndex == -1 || startParamIndex == null
+                  ? null
+                  : name.substring(startParamIndex!).replaceFirst('=', '');
+          var chosenRestaurantId = queryParameter != null
+              ? getDocRefFromPath(decryptString(queryParameter)).documentIds[0]
+              : null;
+          var chosenRestaurantInfo = chosenRestaurantId == null
+              ? null
+              : restaurantsInfo.firstWhere((restaurant) {
+                  DocumentReference restaurantDocRef = restaurant['docRef'];
+                  return restaurantDocRef.id == chosenRestaurantId;
+                });
           if (settings.name != null &&
               startParamIndex != -1 &&
               startParamIndex != null &&
+              queryParameter != null &&
               settings.name?.substring(0, fragmentEndIndex) == '/submitted') {
-            var name = settings.name!;
-            var queryParameter =
-                name.substring(startParamIndex).replaceFirst('=', '');
             return MaterialPageRoute(
               builder: (_) =>
                   OrderSubmittedScreen(orderDocRefEnc: queryParameter),
+            );
+          } else if (settings.name != null &&
+              startParamIndex != -1 &&
+              startParamIndex != null &&
+              queryParameter != null &&
+              settings.name?.substring(0, fragmentEndIndex) ==
+                  '/${chosenRestaurantInfo?['name']}/menu') {
+            return MaterialPageRoute(
+              builder: (_) => MenuScreen(
+                restaurantInfo: chosenRestaurantInfo!,
+                orderDocRefEnc: queryParameter,
+              ),
             );
           } else {
             return MaterialPageRoute(builder: (_) => SignInScreen());

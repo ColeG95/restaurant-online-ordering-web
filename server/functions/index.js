@@ -32,7 +32,7 @@ exports.stripeCheckout = functions.https.onCall(async(data, context) => {
         capture_method: "manual",
       },
       success_url: `${data.currentUrl}submitted?order_ref=${orderDocRefEnc}`,
-      cancel_url: `${data.currentUrl}cart`,
+      cancel_url: `${data.currentUrl}${restaurant.toLowerCase()}/menu?order_ref=${orderDocRefEnc}`,
     });
   } else {
     session = await stripe.checkout.sessions.create({
@@ -51,7 +51,7 @@ exports.stripeCheckout = functions.https.onCall(async(data, context) => {
         capture_method: "manual",
       },
       success_url: `${data.currentUrl}submitted?order_ref=${orderDocRefEnc}`,
-      cancel_url: `${data.currentUrl}${restaurant.toLowerCase()}/cart`,
+      cancel_url: `${data.currentUrl}${restaurant.toLowerCase()}/menu?order_ref=${orderDocRefEnc}`,
     });
   }
   return session;

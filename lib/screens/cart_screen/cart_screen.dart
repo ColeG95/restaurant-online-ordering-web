@@ -102,16 +102,14 @@ class _CartScreenState extends State<CartScreen> {
           .httpsCallable('stripeCheckout')
           .call(<String, dynamic>{
         'total': getTotal(cartProv.orderItems) * 1.05,
-        'restaurant': widget.restaurantInfo['name'].toTitleCase(),
+        'restaurant': widget.restaurantInfo['name'].toString().toTitleCase(),
         'currentUrl': Uri.base
             .toString()
             .replaceFirst('cart', '')
             .replaceFirst('/${widget.restaurantInfo['name']}', ''),
         'email': _auth.currentUser?.email,
         'orderDocRefEnc': orderDocRefEnc,
-        'imageLinkList': [
-          'https://firebasestorage.googleapis.com/v0/b/online-ordering-b486d.appspot.com/o/blt.jpeg?alt=media&token=695530e1-1303-41c4-83bf-d7ec7c2fbac8',
-        ],
+        'imageLinkList': [widget.restaurantInfo['logoUrl'].toString()],
       });
       value.update({
         'sessionId': session.data['id'],
