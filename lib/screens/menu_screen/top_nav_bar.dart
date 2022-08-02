@@ -10,13 +10,11 @@ import '../sign_in_screen/sign_in_screen.dart';
 class TopNavBar extends StatelessWidget {
   final String restaurant;
   final FirebaseAuth auth;
-  final VoidCallback signout;
 
   const TopNavBar({
     Key? key,
     required this.restaurant,
     required this.auth,
-    required this.signout,
   }) : super(key: key);
 
   @override
@@ -78,7 +76,7 @@ class TopNavBar extends StatelessWidget {
                   TextButton(
                     onPressed: () {
                       if (auth.currentUser != null) {
-                        signout();
+                        auth.signOut();
                       } else {
                         Navigator.of(context).push(MaterialPageRoute(
                             builder: (context) => const SignInScreen()));

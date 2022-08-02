@@ -3,9 +3,22 @@ const admin = require("firebase-admin");
 // const { default: Stripe } = require("stripe");
 admin.initializeApp(functions.config().firebase);
 const stripe = require("stripe")(functions.config().stripe.testkey);
+const axios = require("axios");
 
-exports.getEncKey = functions.https.onCall((data, context) => {
-  return "kh7vnIYda+4vJCavmO8q+RuuxMUW/6jEPPjVLcQTR0c=";
+exports.getRequest = functions.https.onCall(async(data, context) => {
+  var url = data.url;
+  var response;
+  axios.post(url.toString())
+  .then((result) => {
+    console.log("SUCCESS");
+    console.log(result);
+    response = result;
+  })
+  .catch((error) => {
+    console.log("ERROR");
+    console.log(error);
+  });
+  return response;
 });
 
 exports.stripeCheckout = functions.https.onCall(async(data, context) => {

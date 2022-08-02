@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:order_online/constants.dart';
 import 'package:order_online/providers/cart.dart';
 import 'package:order_online/models/variation.dart';
@@ -16,8 +17,6 @@ import 'package:provider/provider.dart';
 import 'models/docRefPath.dart';
 
 // TODO change firebase security rules
-// TODO add parameters to cancelUrl to MenuScreen to grab order and repopulate cart
-// TODO add a way to favorite orders, and pick that order to get again
 
 void main() async {
   // setPathUrlStrategy();
@@ -36,6 +35,7 @@ void main() async {
       'logoUrl': doc.data()['logoUrl'],
     });
   }
+  await dotenv.load(fileName: ".env");
   runApp(MyApp(restaurantsInfo));
 }
 

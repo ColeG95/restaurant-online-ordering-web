@@ -1,21 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:order_online/constants.dart';
+import 'package:order_online/models/coordinates.dart';
 import 'package:order_online/models/food_item.dart';
 import 'package:order_online/models/order_item.dart';
 import 'package:order_online/models/variation.dart';
 import 'package:order_online/providers/order_details.dart';
-import 'package:order_online/screens/cart_screen/cart_screen.dart';
 import 'package:order_online/screens/sign_in_screen/sign_in_screen.dart';
 import '../../models/docRefPath.dart';
 import '../../providers/cart.dart';
 import 'menu_group.dart';
 import 'location_box.dart';
-import 'package:order_online/responsive/responsive_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
 import 'top_nav_bar.dart';
+import 'package:location/location.dart' as loc;
+import 'package:order_online/models/route_info.dart';
+import 'package:order_online/http/travel_info.dart';
+import 'package:order_online/http/current_location.dart';
+import 'package:order_online/http/geocoding.dart';
+import 'package:location/location.dart';
 
 class MenuScreen extends StatefulWidget {
   final Map<String, dynamic> restaurantInfo;
@@ -228,12 +233,6 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  void _signOut() {
-    setState(() {
-      _auth.signOut();
-    });
-  }
-
   void goToSignInPage() {
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (context) => const SignInScreen()));
@@ -350,6 +349,39 @@ class _MenuScreenState extends State<MenuScreen> {
     });
   }
 
+  void findClosestLocation() async {
+    Location location = Location();
+    bool _serviceEnabled;
+    PermissionStatus _permissionGranted;
+    _serviceEnabled = await location.serviceEnabled();
+    if (!_serviceEnabled) {
+      _serviceEnabled = await location.requestService();
+      if (!_serviceEnabled) {
+        return;
+      }
+    }
+    _permissionGranted = await location.hasPermission();
+    if (_permissionGranted == PermissionStatus.denied) {
+      _permissionGranted = await location.requestPermission();
+      if (_permissionGranted != PermissionStatus.granted) {
+        return;
+      }
+    }
+
+    Coordinates currentLocationCoords =
+        await CurrentLocation().getCurrentLocation();
+
+    for (var loc in locations) {
+      Coordinates locCoords = await Geocoding().addressToCoordinates(loc);
+
+      RouteInfo routeInfo =
+          await TravelInfo().getTravelInfo(currentLocationCoords, locCoords);
+      print(routeInfo.durationText);
+      print(routeInfo.distanceText);
+      print(loc);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -366,7 +398,9 @@ class _MenuScreenState extends State<MenuScreen> {
 
   void _setupOrder(bool isPreviousOrder) async {
     await _getOrderDoc(isPreviousOrder);
-    await _getSelectedLocationFromOrder(isPreviousOrder);
+    if (selectedLocation == '') {
+      await _getSelectedLocationFromOrder(isPreviousOrder);
+    }
     await _populateCartWithOrder();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -441,11 +475,25 @@ class _MenuScreenState extends State<MenuScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(),
-                  TopNavBar(
-                    restaurant:
-                        widget.restaurantInfo['name'].toString().toTitleCase(),
-                    auth: _auth,
-                    signout: _signOut,
+                  StreamBuilder(
+                    stream: _auth.authStateChanges(),
+                    builder: (context, userSnapshot) {
+                      if (userSnapshot.hasData) {
+                        return TopNavBar(
+                          restaurant: widget.restaurantInfo['name']
+                              .toString()
+                              .toTitleCase(),
+                          auth: _auth,
+                        );
+                      } else {
+                        return TopNavBar(
+                          restaurant: widget.restaurantInfo['name']
+                              .toString()
+                              .toTitleCase(),
+                          auth: _auth,
+                        );
+                      }
+                    },
                   ),
                   SizedBox(height: 20),
                   ElevatedButton(
@@ -462,9 +510,9 @@ class _MenuScreenState extends State<MenuScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4),
-                          child: Icon(Icons.add_shopping_cart),
+                        Icon(
+                          Icons.add_shopping_cart,
+                          size: 20,
                         ),
                         SizedBox(width: 5),
                         Text('Auto-Fill With Previous Order'),
@@ -480,13 +528,13 @@ class _MenuScreenState extends State<MenuScreen> {
                   const SizedBox(height: 10),
                   if (locations.length > 1)
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: findClosestLocation,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Icon(Icons.add_location_rounded),
+                          Icon(
+                            Icons.add_location_rounded,
+                            size: 20,
                           ),
                           SizedBox(width: 5),
                           Text('Find Closest Location'),
