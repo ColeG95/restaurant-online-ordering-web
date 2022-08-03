@@ -1,5 +1,3 @@
-import 'dart:html';
-
 import 'package:flutter/material.dart';
 import 'package:order_online/models/food_item.dart';
 import 'package:order_online/constants.dart';
@@ -72,6 +70,7 @@ class _MenuGroupState extends State<MenuGroup> {
                 element.category == widget.categories[widget.index])
             .indexedMap((item, index) {
           bool isSelected = item.name == widget.selectedItem.name;
+
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -266,6 +265,12 @@ class _MenuGroupState extends State<MenuGroup> {
                               ),
                             )
                           : ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                primary: Colors.grey,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
                               onPressed: () {
                                 setState(() {
                                   showNote = true;
@@ -274,32 +279,36 @@ class _MenuGroupState extends State<MenuGroup> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.edit_outlined),
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    size: 20,
+                                  ),
                                   SizedBox(width: 5),
                                   Text('Add a Note'),
                                 ],
                               ),
-                              style: ButtonStyle(
-                                backgroundColor:
-                                    MaterialStateProperty.all(Colors.grey),
-                              ),
                             ),
                       SizedBox(height: 10),
                       ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          primary: themeColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
                         onPressed: () {
                           widget.addToCart(_controller.text);
                         },
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.add_shopping_cart),
+                            Icon(
+                              Icons.add_shopping_cart,
+                              size: 20,
+                            ),
                             SizedBox(width: 5),
                             Text('Add To Cart'),
                           ],
-                        ),
-                        style: ButtonStyle(
-                          backgroundColor:
-                              MaterialStateProperty.all(themeColor),
                         ),
                       ),
                       SizedBox(height: 20),

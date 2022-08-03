@@ -59,7 +59,8 @@ class TopNavBar extends StatelessWidget {
                   if (cart.orderItems.isNotEmpty)
                     TextButton(
                       onPressed: () {
-                        Navigator.of(context).pushNamed('/cart');
+                        Navigator.of(context)
+                            .pushNamed('/${restaurant.toLowerCase()}/cart');
                       },
                       style: ButtonStyle(
                         foregroundColor: MaterialStateProperty.all(themeColor),
@@ -78,8 +79,7 @@ class TopNavBar extends StatelessWidget {
                       if (auth.currentUser != null) {
                         auth.signOut();
                       } else {
-                        Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const SignInScreen()));
+                        Navigator.of(context).pushNamed('/signin');
                       }
                     },
                     style: ButtonStyle(

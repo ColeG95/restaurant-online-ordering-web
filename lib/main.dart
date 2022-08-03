@@ -70,6 +70,16 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Online Ordering',
+        theme: ThemeData(
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+            ),
+          ),
+        ),
         onGenerateRoute: (settings) {
           var startParamIndex = settings.name?.indexOf('=');
           var fragmentEndIndex = settings.name?.indexOf('?');

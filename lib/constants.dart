@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 
@@ -43,8 +41,7 @@ extension StringCasingExtension on String {
 }
 
 String deleteNumbersFromString(String str) {
-  var nums = str.replaceAll(RegExp(r'[^0-9]'), '');
-  return str.replaceAll(nums, '').trimLeft().trimRight();
+  return str.replaceAll(RegExp(r'[\d*]'), '').trimLeft().trimRight();
 }
 
 DocRefPath getDocRefFromPath(String path) {

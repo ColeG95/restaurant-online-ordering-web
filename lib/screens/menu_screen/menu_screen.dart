@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:order_online/constants.dart';
@@ -7,6 +9,7 @@ import 'package:order_online/models/order_item.dart';
 import 'package:order_online/models/variation.dart';
 import 'package:order_online/providers/order_details.dart';
 import 'package:order_online/screens/sign_in_screen/sign_in_screen.dart';
+import 'package:order_online/theme_widgets/theme_elevated_button.dart';
 import '../../models/docRefPath.dart';
 import '../../providers/cart.dart';
 import 'menu_group.dart';
@@ -179,8 +182,8 @@ class _MenuScreenState extends State<MenuScreen> {
         selectedOrderItem = null;
       });
     }
-    aboveMaxSides =
-        selectedOrderItem!.selectedSides.length >= selectedOrderItem!.maxSides;
+    // aboveMaxSides =
+    //     selectedOrderItem!.selectedSides.length >= selectedOrderItem!.maxSides;
   }
 
   void editSelectedOrderItem(FoodItem? side, Variation? variation) {
@@ -194,20 +197,19 @@ class _MenuScreenState extends State<MenuScreen> {
               .removeWhere((selectedSide) => selectedSide.name == side.name);
         });
       } else {
-        selectedOrderItem!.selectedSides.add(
-          OrderItem(
-            id: UniqueKey().toString(),
-            name: side.name,
-            activePrice: aboveMaxSides
-                ? side.price ?? 0
-                : side.sidePriceBeforeExceededMax ?? 0,
-          ),
-        );
+        setState(() {
+          selectedOrderItem!.selectedSides.add(
+            OrderItem(
+              id: UniqueKey().toString(),
+              name: side.name,
+              activePrice: selectedOrderItem!.selectedSides.length >=
+                      selectedOrderItem!.maxSides
+                  ? side.price ?? 0
+                  : side.sidePriceBeforeExceededMax ?? 0,
+            ),
+          );
+        });
       }
-      setState(() {
-        aboveMaxSides = selectedOrderItem!.selectedSides.length >=
-            selectedOrderItem!.maxSides;
-      });
     }
     if (variation != null && selectedOrderItem != null) {
       bool isAlreadySelected = selectedOrderItem!.selectedVariations
@@ -351,35 +353,51 @@ class _MenuScreenState extends State<MenuScreen> {
 
   void findClosestLocation() async {
     Location location = Location();
-    bool _serviceEnabled;
-    PermissionStatus _permissionGranted;
-    _serviceEnabled = await location.serviceEnabled();
-    if (!_serviceEnabled) {
-      _serviceEnabled = await location.requestService();
-      if (!_serviceEnabled) {
+    bool serviceEnabled;
+    PermissionStatus permissionGranted;
+    serviceEnabled = await location.serviceEnabled();
+    if (!serviceEnabled) {
+      serviceEnabled = await location.requestService();
+      if (!serviceEnabled) {
         return;
       }
     }
-    _permissionGranted = await location.hasPermission();
-    if (_permissionGranted == PermissionStatus.denied) {
-      _permissionGranted = await location.requestPermission();
-      if (_permissionGranted != PermissionStatus.granted) {
+    permissionGranted = await location.hasPermission();
+    if (permissionGranted == PermissionStatus.denied) {
+      permissionGranted = await location.requestPermission();
+      if (permissionGranted != PermissionStatus.granted) {
         return;
       }
     }
 
+    showDialog(
+      barrierDismissible: false,
+      builder: (ctx) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+      context: context,
+    );
+
     Coordinates currentLocationCoords =
         await CurrentLocation().getCurrentLocation();
+
+    List<int> allRouteDurations = [];
 
     for (var loc in locations) {
       Coordinates locCoords = await Geocoding().addressToCoordinates(loc);
 
       RouteInfo routeInfo =
           await TravelInfo().getTravelInfo(currentLocationCoords, locCoords);
-      print(routeInfo.durationText);
-      print(routeInfo.distanceText);
-      print(loc);
+      allRouteDurations.add(routeInfo.durationSeconds);
     }
+
+    int minDuration = allRouteDurations.reduce(min);
+    int minDurationIndex =
+        allRouteDurations.indexWhere((duration) => duration == minDuration);
+    selectLocationGetData(locations[minDurationIndex]);
+    Navigator.of(context).pop();
   }
 
   @override
@@ -496,7 +514,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     },
                   ),
                   SizedBox(height: 20),
-                  ElevatedButton(
+                  ThemeElevatedButton(
                     onPressed: () {
                       if (_auth.currentUser != null) {
                         _setupOrder(true);
@@ -504,20 +522,8 @@ class _MenuScreenState extends State<MenuScreen> {
                         Navigator.of(context).pushNamed('signin');
                       }
                     },
-                    style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all(themeColor),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(
-                          Icons.add_shopping_cart,
-                          size: 20,
-                        ),
-                        SizedBox(width: 5),
-                        Text('Auto-Fill With Previous Order'),
-                      ],
-                    ),
+                    label: 'Auto-Fill With Previous Order',
+                    icon: Icons.add_shopping_cart,
                   ),
                   if (locations.length > 1) const SizedBox(height: 10),
                   if (locations.length > 1)
@@ -527,24 +533,12 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                   const SizedBox(height: 10),
                   if (locations.length > 1)
-                    ElevatedButton(
+                    ThemeElevatedButton(
                       onPressed: findClosestLocation,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.add_location_rounded,
-                            size: 20,
-                          ),
-                          SizedBox(width: 5),
-                          Text('Find Closest Location'),
-                        ],
-                      ),
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all(themeColor),
-                      ),
+                      label: 'Find Closest Location',
+                      icon: Icons.add_location_rounded,
                     ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 15),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Wrap(

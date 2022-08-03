@@ -22,11 +22,15 @@ class LocationBox extends StatelessWidget {
         select(deleteNumbersFromString(locationText));
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        padding: const EdgeInsets.all(5),
+        margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 7,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? themeColor : Colors.transparent,
           border: Border.all(color: Colors.black),
+          borderRadius: BorderRadius.circular(30),
         ),
         child: Text(
           deleteNumbersFromString(locationText),
